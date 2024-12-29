@@ -14,7 +14,7 @@ import logging
 from torch.nn.parameter import Parameter
 from models import *
 
-
+# zht test first commit
 def save_model(model, iter, name):
     torch.save(model.state_dict(), os.path.join(name, "iter_{}.pth.tar".format(iter)))
 
