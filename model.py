@@ -74,7 +74,7 @@ class ImageCompressor(nn.Module):
             #* 如果此时模型处于训练状态，那么就用 (feature_renorm + quant_noise_feature) 作为 量化值
             compressed_feature_renorm = feature_renorm + quant_noise_feature
         else:
-            #* 如果此时模型处于此时状态，那么就用 torch.round(feature_renorm) 作为 量化值
+            #* 如果此时模型处于测试/推理状态，那么就用 torch.round(feature_renorm) 作为 量化值
             compressed_feature_renorm = torch.round(feature_renorm)
             
         #* 至此，compressed_feature_renorm 表示 经过量化后的编码值。
