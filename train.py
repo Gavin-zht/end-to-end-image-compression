@@ -14,26 +14,26 @@ torch.backends.cudnn.enabled = True
 gpu_num = torch.cuda.device_count()
 cur_lr = base_lr = 1e-4#  * gpu_num
 train_lambda = 8192
-print_freq = 100
+print_freq = 1
 cal_step = 40
 warmup_step = 0#  // gpu_num
 batch_size = 4
-tot_epoch = 1000000
+tot_epoch = 1000000  #* tot_epoch 用来记录你总共要训练的epoch轮数(i.e. 你总共要遍历几次完整的训练数据集)
 tot_step = 2500000
 decay_interval = 2200000
 lr_decay = 0.1
 image_size = 256
 logger = logging.getLogger("ImageCompression")
 tb_logger = None
-global_step = 0
+global_step = 0  #* global_step 记录 总共迭代了的batch 的数目
 save_model_freq = 50000
-parser = argparse.ArgumentParser(description='Pytorch reimplement for variational image compression with a scale hyperprior')
-
+parser = argparse.ArgumentParser(description='Pytorch reimplement for variational image compression with a scale hyperprior')   #* 定义了一个解析器 parser
+#* 下面的若干行用于定义parser的若干个属性, e.g. name, pretrain, test, .... 我们可以用命令行的方式来传入这些属性的取值
 parser.add_argument('-n', '--name', default='',
         help='output training details')
 parser.add_argument('-p', '--pretrain', default = '',
         help='load pretrain model')
-parser.add_argument('--test', action='store_true')
+parser.add_argument('--test',default = False, action='store_true')
 parser.add_argument('--config', dest='config', required=False,
         help = 'hyperparameter in json format')
 parser.add_argument('--seed', default=234, type=int, help='seed for random functions, and network initialization')
@@ -154,8 +154,15 @@ def train(epoch, global_step):
 
 
 def testKodak(step):
+    """_summary_
+    模型测试函数
+    Args:
+        step (_type_): _description_
+    """
     with torch.no_grad():
-        test_dataset = TestKodakDataset(data_dir='/data1/liujiaheng/data/compression/kodak')
+        print('in test mode')
+        #test_dataset = TestKodakDataset(data_dir='/data1/liujiaheng/data/compression/kodak')
+        test_dataset = TestKodakDataset(data_dir='D:\\researchdata\\fliker_images') #* zht 使用 同一组数据作为训练集、测试集
         test_loader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=1, pin_memory=True, num_workers=1)
         net.eval()
         sumBpp = 0
@@ -166,7 +173,7 @@ def testKodak(step):
         for batch_idx, input in enumerate(test_loader):
             input = input.cuda()
             clipped_recon_image, mse_loss, bpp = net(input)
-            mse_loss = torch.mean((clipped_recon_image - input).pow(2))
+            mse_loss = torch.mean((clipped_recon_image - input).pow(2)) #* 计算 重建图像和原始输入图像的 MSE损失
             mse_loss, bpp = \
                 torch.mean(mse_loss), torch.mean(bpp)
             psnr = 10 * (torch.log(1. / mse_loss) / np.log(10))
@@ -195,7 +202,8 @@ def testKodak(step):
             logger.info("No need to add tensorboard")
 
 if __name__ == "__main__":
-    args = parser.parse_args()
+    args = parser.parse_args() #* 从命令行中读入parser的属性
+    args.test = True
     torch.manual_seed(seed=args.seed)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s] %(message)s')
     formatter = logging.Formatter('[%(asctime)s][%(filename)s][L%(lineno)d][%(levelname)s] %(message)s')
@@ -229,7 +237,7 @@ if __name__ == "__main__":
         #* 如果此时选择的是模型测试，那么就执行下面这段代码，在Kodak数据集上进行测试
         testKodak(global_step)
         exit(-1) # 完成测试后直接杀死进程，退出程序
-    optimizer = optim.Adam(parameters, lr=base_lr)
+    optimizer = optim.Adam(parameters, lr=base_lr) #* 初始化 Adam优化器
     # save_model(model, 0)
     global train_loader
     tb_logger = SummaryWriter(os.path.join(save_path, 'events'))
@@ -242,6 +250,9 @@ if __name__ == "__main__":
                               pin_memory=True,
                               num_workers=2)
     steps_epoch = global_step // (len(train_dataset) // (batch_size))# * gpu_num))
+    #* step_epoch 表示 当前训练了的epoch 的数目。
+    #* 计算过程如下： 当前已经 总共迭代了的batch 的数目为global_step, 而完整地跑一遍训练集，会有: (len(train_dataset) // (batch_size)) 这么多个batch 
+    #* 因此，当前已经跑了 global_step // (len(train_dataset) // (batch_size)) 这么多遍数据集，也就是这么多个epoch(因为每一个epoch是要完整遍历一遍训练集)
     save_model(model, global_step, save_path)
     for epoch in range(steps_epoch, tot_epoch):
         adjust_learning_rate(optimizer, global_step)
