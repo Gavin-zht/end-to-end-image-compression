@@ -205,6 +205,7 @@ if __name__ == "__main__":
     logger.addHandler(stdhandler)
     dd = 1
     save_path = os.path.join('checkpoints', args.name)
+    print(save_path)
     if args.name != '':
         os.makedirs(save_path, exist_ok=True)
         filehandler = logging.FileHandler(os.path.join(save_path, 'log.txt'))
@@ -225,13 +226,15 @@ if __name__ == "__main__":
     net = torch.nn.DataParallel(net, list(range(gpu_num)))
     parameters = net.parameters()
     if args.test:
+        #* 如果此时选择的是模型测试，那么就执行下面这段代码，在Kodak数据集上进行测试
         testKodak(global_step)
-        exit(-1)
+        exit(-1) # 完成测试后直接杀死进程，退出程序
     optimizer = optim.Adam(parameters, lr=base_lr)
     # save_model(model, 0)
     global train_loader
     tb_logger = SummaryWriter(os.path.join(save_path, 'events'))
-    train_data_dir = '/data1/liujiaheng/data/compression/Flick_patch'
+    # train_data_dir = '/data1/liujiaheng/data/compression/Flick_patch'
+    train_data_dir = 'D:\\researchdata\\fliker_images'
     train_dataset = Datasets(train_data_dir, image_size)
     train_loader = DataLoader(dataset=train_dataset,
                               batch_size=batch_size,
